@@ -4,11 +4,11 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
-import connectDB from "./utils/db.js";
-import userRoute from "./routes/user.route.js";
-import companyRoute from "./routes/company.route.js";
-import jobRoute from "./routes/job.route.js";
-import applicationRoute from "./routes/application.route.js";
+import connectDB from "../utils/db.js";
+import userRoute from "../routes/user.route.js";
+import companyRoute from "../routes/company.route.js";
+import jobRoute from "../routes/job.route.js";
+import applicationRoute from "../routes/application.route.js";
 
 // Load environment variables
 dotenv.config();
