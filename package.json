@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --open",
+    "server": "nodemon server.js",
+    "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
-  },
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
