@@ -28,7 +28,11 @@ export const applyJob = async (req, res) => {
         // --- AI MICROSERVICE CALL ---
         let aiResult = null;
         try {
-            const aiResponse = await axios.post("http://127.0.0.1:8000/analyze", {
+            // This pulls the live Vercel URL you set in your dashboard, 
+            // but falls back to your local python server when testing on your machine!
+            const aiServiceUrl = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000/api/analyze";
+
+            const aiResponse = await axios.post(aiServiceUrl, {
                 resume_text: user.profile?.skills?.join(", ") || "Applicant", 
                 job_description: `${job.title}: ${job.description}. Requirements: ${job.requirements.join(", ")}`
             });
