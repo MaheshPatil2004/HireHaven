@@ -30,9 +30,9 @@ export const applyJob = async (req, res) => {
         try {
             // This pulls the live Vercel URL you set in your dashboard, 
             // but falls back to your local python server when testing on your machine!
-            const aiServiceUrl = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000/api/analyze";
+            //const aiServiceUrl = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000/api/analyze";
 
-            const aiResponse = await axios.post(aiServiceUrl, {
+            const aiResponse = await axios.post("https://hire-haven.vercel.app/api/analyze", {
                 resume_text: user.profile?.skills?.join(", ") || "Applicant", 
                 job_description: `${job.title}: ${job.description}. Requirements: ${job.requirements.join(", ")}`
             });
