@@ -36,6 +36,13 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
+
+app.use(async (req, res, next) => {
+    await connectDB();
+    next();
+});
+
+
 // API routes
 app.use("/api/v1/user", userRoute);
 app.use("/api/v1/company", companyRoute);
@@ -43,7 +50,7 @@ app.use("/api/v1/job", jobRoute);
 app.use("/api/v1/application", applicationRoute);
 
 // Connect to MongoDB Atlas
-connectDB();
+
 
 // Export Express app for Vercel
 export default app;
