@@ -14,7 +14,8 @@ import AdminJobs from "./components/admin/AdminJobs";
 import PostJob from './components/admin/PostJob'
 import Applicants from './components/admin/Applicants'
 import ProtectedRoute from './components/admin/ProtectedRoute'
-
+// Import the new UpdateJob component here
+import UpdateJob from './components/admin/UpdateJob'
 
 const appRouter = createBrowserRouter([
   {
@@ -66,14 +67,18 @@ const appRouter = createBrowserRouter([
     path:"/admin/jobs/create",
     element:<ProtectedRoute><PostJob/></ProtectedRoute> 
   },
+  // Add your new Update route right here
+  {
+    path:"/admin/jobs/update/:id",
+    element:<ProtectedRoute><UpdateJob/></ProtectedRoute> 
+  },
   {
     path:"/admin/jobs/:id/applicants",
     element:<ProtectedRoute><Applicants/></ProtectedRoute> 
   },
-
 ])
-function App() {
 
+function App() {
   return (
     <div>
       <RouterProvider router={appRouter} />
