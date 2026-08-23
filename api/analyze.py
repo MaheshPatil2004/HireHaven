@@ -23,7 +23,10 @@ class AnalysisRequest(BaseModel):
     resume_text: str
     job_description: str
 
-@app.post("/analyze")
+# Stack these three routes! FastAPI will catch the request no matter how Vercel formats the URL.
+@app.post("/api/analyze")
+@app.post("/api/analyze.py")
+@app.post("/")
 async def analyze_resume(request: AnalysisRequest):
     prompt = f"""
     Act as an expert technical recruiter. Analyze the following resume text against the job description.
