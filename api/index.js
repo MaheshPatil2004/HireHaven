@@ -1,4 +1,4 @@
-//import dns from "dns";
+import dns from "dns";
 import express from "express";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
@@ -14,7 +14,7 @@ import applicationRoute from "../routes/application.route.js";
 dotenv.config();
 
 // Fix DNS SRV resolution issue with MongoDB Atlas
-//dns.setServers(["8.8.8.8", "1.1.1.1"]);
+dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 const app = express();
 
@@ -37,10 +37,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 
-app.use(async (req, res, next) => {
-    await connectDB();
-    next();
-});
+
 
 
 // API routes
@@ -51,6 +48,10 @@ app.use("/api/v1/application", applicationRoute);
 
 // Connect to MongoDB Atlas
 
+// Connect to MongoDB Atlas immediately on startup
+connectDB();
+
+// Export Express app for Vercel
 
 // Export Express app for Vercel
 export default app;

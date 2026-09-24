@@ -25,39 +25,53 @@ export const applyJob = async (req, res) => {
             return res.status(404).json({ message: "Job not found", success: false });
         }
 
-        // --- AI MICROSERVICE CALL ---
+        // --- 1. PREPARE CANDIDATE TEXT ---
+        const candidateProfileText = [
+            user.profile?.bio || "",
+            user.profile?.skills?.join(", ") || "",
+            user.profile?.resumeOriginalName || ""
+        ].filter(Boolean).join(". ") || "Candidate Profile";
+
+        const jobDescriptionText = `${job.title}: ${job.description}. Requirements: ${job.requirements?.join(", ") || ""}`;
+
+        // --- 2. AI MATCH ANALYSIS (LOCAL FASTAPI) ---
         let aiResult = null;
         try {
-            // This pulls the live Vercel URL you set in your dashboard, 
-            // but falls back to your local python server when testing on your machine!
-            //const aiServiceUrl = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000/api/analyze";
+            const aiServiceUrl = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";
 
-            const aiResponse = await axios.post("https://hire-haven.vercel.app/api/analyze", {
-                resume_text: user.profile?.skills?.join(", ") || "Applicant", 
-                job_description: `${job.title}: ${job.description}. Requirements: ${job.requirements.join(", ")}`
+            const aiResponse = await axios.post(`${aiServiceUrl}/analyze`, {
+                resume_text: candidateProfileText, 
+                job_description: jobDescriptionText
             });
             
-            // MAP THE PYTHON SNAKE_CASE TO MONGODB CAMELCASE
             aiResult = {
-                matchScore: aiResponse.data.match_score,
-                matchingSkills: aiResponse.data.matching_skills,
-                missingSkills: aiResponse.data.missing_skills,
-                summary: aiResponse.data.summary
+                matchScore: aiResponse.data.match_score || 0,
+                matchingSkills: aiResponse.data.matching_skills || [],
+                missingSkills: aiResponse.data.missing_skills || [],
+                summary: aiResponse.data.summary || ""
             };
-
         } catch (error) {
-            console.error("AI Service Error:", error.message);
+            console.error("AI Analysis Service Error:", error.message);
         }
 
-        // Create application with AI data
-        const newApplication = await Application.create({
+        // --- 3. CREATE APPLICATION IN DB ---
+        const application = await Application.create({
             job: jobId,
             applicant: userId,
-            aiAnalysis: aiResult
+            aiMatch: aiResult // saves the score and summary to Mongo
         });
 
-        job.applications.push(newApplication._id);
+        job.applications.push(application._id);
         await job.save();
+
+        // --- 4. RAG INGESTION (NON-BLOCKING BACKGROUND CALL) ---
+        // Indexes the candidate into ChromaDB for intelligent search
+        const aiServiceUrl = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";
+        axios.post(`${aiServiceUrl}/embed-resume`, {
+            applicant_id: userId.toString(),
+            job_id: jobId.toString(),
+            resume_text: candidateProfileText
+        }).catch(err => console.error("ChromaDB Embedding Error:", err.message));
 
         return res.status(201).json({
             message: "Job applied successfully.",
@@ -69,6 +83,40 @@ export const applyJob = async (req, res) => {
     }
 };
 
+// Search Candidates with RAG (For Employer/Recruiter)
+export const searchCandidatesWithRAG = async (req, res) => {
+    try {
+        const { jobId } = req.params;
+        const { query } = req.body;
+
+        if (!query) {
+            return res.status(400).json({
+                message: "Search query is required",
+                success: false
+            });
+        }
+
+        // 1. Call FastAPI RAG endpoint
+        const aiResponse = await axios.post("http://127.0.0.1:8000/search-candidates", {
+            job_id: jobId,
+            query: query,
+            top_k: 5
+        });
+
+        const rankedCandidates = aiResponse.data.candidates || [];
+
+        return res.status(200).json({
+            candidates: rankedCandidates,
+            success: true
+        });
+    } catch (error) {
+        console.error("RAG Search Error:", error.message);
+        return res.status(500).json({
+            message: "Failed to perform intelligent search",
+            success: false
+        });
+    }
+};
 // 2. Get Applied Jobs (For Job Seeker)
 export const getAppliedJobs = async (req, res) => {
     try {
