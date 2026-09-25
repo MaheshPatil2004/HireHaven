@@ -21,64 +21,48 @@ export const applyJob = async (req, res) => {
         const job = await Job.findById(jobId);
         const user = await User.findById(userId);
 
-        if (!job) {
-            return res.status(404).json({ message: "Job not found", success: false });
+        if (!job || !user) {
+            return res.status(404).json({ message: "Job or user not found", success: false });
         }
 
-        // --- 1. PREPARE CANDIDATE TEXT ---
-        const candidateProfileText = [
-            user.profile?.bio || "",
-            user.profile?.skills?.join(", ") || "",
-            user.profile?.resumeOriginalName || ""
-        ].filter(Boolean).join(". ") || "Candidate Profile";
+        const hasResume = Boolean(user.profile?.resume);
 
-        const jobDescriptionText = `${job.title}: ${job.description}. Requirements: ${job.requirements?.join(", ") || ""}`;
-
-        // --- 2. AI MATCH ANALYSIS (LOCAL FASTAPI) ---
-        let aiResult = null;
-        try {
-            const aiServiceUrl = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";
-
-            const aiResponse = await axios.post(`${aiServiceUrl}/analyze`, {
-                resume_text: candidateProfileText, 
-                job_description: jobDescriptionText
-            });
-            
-            aiResult = {
-                matchScore: aiResponse.data.match_score || 0,
-                matchingSkills: aiResponse.data.matching_skills || [],
-                missingSkills: aiResponse.data.missing_skills || [],
-                summary: aiResponse.data.summary || ""
-            };
-        } catch (error) {
-            console.error("AI Analysis Service Error:", error.message);
-        }
-
-        // --- 3. CREATE APPLICATION IN DB ---
+        // 1. Create application record
         const application = await Application.create({
             job: jobId,
             applicant: userId,
-            aiMatch: aiResult // saves the score and summary to Mongo
+            aiAnalysis: {
+                matchScore: 0,
+                status: hasResume ? "processing" : "failed",
+                matchingSkills: [],
+                missingSkills: [],
+                summary: hasResume ? "AI is analyzing resume..." : "No resume uploaded."
+            }
         });
 
         job.applications.push(application._id);
         await job.save();
 
-        // --- 4. RAG INGESTION (NON-BLOCKING BACKGROUND CALL) ---
-        // Indexes the candidate into ChromaDB for intelligent search
-        const aiServiceUrl = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";
-        axios.post(`${aiServiceUrl}/embed-resume`, {
-            applicant_id: userId.toString(),
-            job_id: jobId.toString(),
-            resume_text: candidateProfileText
-        }).catch(err => console.error("ChromaDB Embedding Error:", err.message));
+        // 2. Dispatch to Python worker if resume exists
+        if (hasResume) {
+            const aiServiceUrl = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";
+            const jobDescriptionText = `${job.title}: ${job.description}. Requirements: ${job.requirements?.join(", ") || ""}`;
+
+            axios.post(`${aiServiceUrl}/process-application`, {
+                application_id: application._id.toString(),
+                applicant_id: userId.toString(),
+                job_id: jobId.toString(),
+                resume_url: user.profile.resume,
+                resume_text: user.profile.extractedResumeText || "",
+                job_description: jobDescriptionText
+            }).catch(err => console.error("Worker trigger failed:", err.message));
+        }
 
         return res.status(201).json({
             message: "Job applied successfully.",
             success: true
         });
     } catch (error) {
-        console.log(error);
         return res.status(500).json({ message: "Internal server error", success: false });
     }
 };

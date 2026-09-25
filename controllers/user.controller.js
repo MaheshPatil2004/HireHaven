@@ -317,6 +317,7 @@ export const updateProfile = async (req, res) => {
 
             user.profile.resumeOriginalName =
                 file.originalname;
+            user.profile.extractedResumeText = "";
         }
 
         await user.save();

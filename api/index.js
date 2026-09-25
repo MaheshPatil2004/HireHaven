@@ -8,6 +8,7 @@ import connectDB from "../utils/db.js";
 import userRoute from "../routes/user.route.js";
 import companyRoute from "../routes/company.route.js";
 import jobRoute from "../routes/job.route.js";
+import copilotRoute from "../routes/copilot.route.js";
 import applicationRoute from "../routes/application.route.js";
 
 // Load environment variables
@@ -42,6 +43,7 @@ app.use(cors(corsOptions));
 
 // API routes
 app.use("/api/v1/user", userRoute);
+app.use("/api/v1/copilot", copilotRoute);
 app.use("/api/v1/company", companyRoute);
 app.use("/api/v1/job", jobRoute);
 app.use("/api/v1/application", applicationRoute);
